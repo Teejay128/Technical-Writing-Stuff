@@ -113,6 +113,22 @@ const UserSchema = new Schema({
     }
 }, { timestamps: true });
 
+// This is a function for login a user in
+// more details in the  userController section
+UserSchema.statics.login = async function(email, password) {
+    const user = await this.findOne({ email });
+    if(!user){
+        throw Error('Incorect email, try again or sign up!');
+    }
+
+    const auth = await bcrypt.compare(password, user.password);
+    if(!auth){
+        throw Error('Incorrect password');
+    }
+
+    return user
+}
+
 // Create a user model with the user schema
 const User = mongoose.model('users', UserSchema);
 
@@ -226,6 +242,8 @@ userRouter.post('/logout', () => {
 module.exports = userRouter;
 ```
 
+First step is to create a router using the `express.router()` function, this router will contain all the necessary endpoints and functions(either callbacks or link to external controller), after this the router is exported to the index.js for usage by our server.
+
 I tested the routes using postman, if the routes are functioning properly, they should send a response with the text contained in the `res.send()` function. All the endpoints in the userRoutes file are post requests as they send information to the browser.
 
 !!!!!
@@ -238,31 +256,200 @@ The articleRoutes file will contain endpoints for all the required functions tha
 const express = require('express')
 const blogRouter = express.Router();
 
-blogRouter.get('/signup', () => {
-  // Function for signing a new user in goes here
-  res.send('Signs in a new user')
+blogRouter.get('/', () => {
+  // Function for getting all available blogs
+  res.send('Gets all available articles')
 });
 
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+blogRouter.get('/user', () => {
+  // Function for getting all the articles by a user
+  res.send('Gets all articles by a user')
+});
 
-blogRouter.get('/', blogController.getAllArticles); // Not secured
+blogRouter.get('/:id', () => {
+  // Function for getting an article by id
+  res.send('Gets an article by id')
+});
 
-blogRouter.get('/user', requireAuth, blogController.getMyArticles); // Secured
+blogRouter.post('/', () => {
+  // Function for creating a new article
+  res.send('Creates a new article')
+});
 
-blogRouter.get('/:id', blogController.getArticle); // Not secured
+blogRouter.delete('/:id', () => {
+  // Function for updating an article
+  res.send('Updates an article')
+});
 
-blogRouter.post('/', requireAuth, blogController.createArticle); // Secured
-
-blogRouter.delete('/:id', requireAuth, blogController.deleteArticle); // Secured
-
-blogRouter.patch('/:id', requireAuth, blogController.updateArticle); // Secured
+blogRouter.patch('/:id', () => {
+  // Function for deleting an article
+  res.send('Deletes an article')
+});
 
 module.exports = blogRouter;
 ```
 
-First step is to create a router using the `express.router()` function, this router will contain all the necessary endpoints and functions(either callbacks or link to external controller), after this the router is exported to the index.js for usage by our server.
+In this API, a single endpoint is meant to handle a single request, this is the reason for the occurence of numerous endpoints in the routes file. The texts in the brackets are just simple placeholder messages to ensure that the endpoints are connected properly, so that when tested in the browser you will be able to get a simple message that lets you know which endpoint you are testing.
 
-### Controllers
+Next is to connect these routes to the server by updating the code in the index.js file to look like this:
+
+``` JavaScript
+// Require express module
+const express = require('express');
+
+// Require the routers !!!!!
+const userRouter = require('./routes/userRoutes')
+const articleRouter = require('./routes/articleRoutes')
+
+// Create an app using the express module
+const app = express();
+
+// Some middlewares for the express app !!!!!
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
+// Using the routers !!!!!
+app.use('/api/v1/user', userRouter)
+app.use('/api/v1/blog', articleRouter)
+
+// Add a simple endpoint
+app.get('/', (req, res) => {
+    res.send("Hello World")
+})
+
+// Listen for requests made to the server
+app.listen(4000, (req, res) => {
+    console.log(`Server is running on port: 4000`)
+})
+```
+
+> I used "!!!!!" at the end of the comments to show parts of the file that I made changes to
+
+In this case whenever a user makes a request to the `/api/v1/user` route, the request is sent to the userRouter which then sends the request to the controllers which handle the requests. The extra middlewares are to allow the server to accept requests in either urlencoded or JSON formats.
+
+## Controllers
+
+The controllers will contain the code for interacting with the database, processing requests and sendingh back responses.
+
+Create a controllers for the two controllers which are `userController` and `blogController`, this files will be connected to the server by connecing them to routes folder.
+
+### User Controller
+
+The user controller will contain functions to handle the three requests which a user can make to the API, signing up, signing in, and signing out. This is the code contained in the controllers folder:
+
+``` Javascript
+const User = require('../models/userModel');
+const bcrypt = require('bcrypt')
+```
+
+The `User` is required from the userModel file, as it is required for interacting with the database object. `bcrypt` is a library for hashing, it will be required for the logout and login sections
+
+``` Javascript
+// Signup function
+const signup = async (req, res) => {
+
+  // Checks if user already exists
+  const user = await User.findOne({ email: req.body.email })
+  if(user){
+      console.log("This user already exists, you have been logged in!")
+      // Redirect them to log in page
+      return res.redirect('/api/v1/user/login')
+  }
+
+  try{
+      // Creates new user and hashes the password
+      const user = new User(req.body);
+      const salt = await bcrypt.genSalt(10);
+      user.password = await bcrypt.hash(user.password, salt);
+      await user.save();
+
+      // Returns the user data
+      return res.status(201).json({
+          status: "success",
+          message: "Sign up successful!, you have been automatically logged in",
+          data: {
+              firstName: user.firstName,
+              lastname: user.lastName,
+              email: user.email,
+              articles: user.articles,
+              id: user._id
+          }
+      })
+  }
+  // Throws error if any
+  catch(err){
+      res.status(400).send(err.message)
+  }
+}
+```
+
+When a new user is created via signing up, the body of the request, which contains information like, name, email and password is taken and used to create a new user in the database, the password is also hashed so even if an hacker manages to access the database, they wouldn't be able to get the actual passwords, but rather hashed strings like: "". Once the user has been created succesfully, the details are sent back as a response.
+
+``` Javascript
+// Login function
+const login = async (req, res) => {
+
+    // Obtains email and password from request body
+    const { email, password } = req.body;
+
+    try{
+      // Uses login static function
+        const user = await User.login(email, password);
+        
+        // Returns user data
+        res.status(201).json({
+            status: "success",
+            message: "You logged in successfully",
+            data: {
+                firstName: user.firstName,
+                lastname: user.lastName,
+                email: user.email,
+                articles: user.articles,
+                id: user._id
+            }
+        });
+    }
+    // Throws error if any
+    catch(err){
+        res.status(400).send(err.message)
+    }
+}
+```
+
+The login function takes two parameters from the request body: the email and password. This details are used to log the data into the database using the static login function in the userModel file, but this only works if the user has already signed up.
+
+> Note that the user password is not sent as part of the response
+
+``` Javascript
+const logout = (req, res) => {
+    // Implement log out function later
+    res.send('Logged out succesfully')
+}
+
+// Exports all the functions
+module.exports = {
+    signup,
+    login,
+    logout
+}
+```
+
+The last function is a logout function which will be implemented in the JWT section. All three functions are then exported to the routes folder where they can be use by requiring them with the following code:
+
+``` Javascript
+// Inside the userRoutes file
+const userController = require('../controllers/userController')
+```
+
+> When requiring a fucntion that is not a package, you would need to put the path as a string rather than the package name
+
+### Blog controller
+
+The blog controller file will contain all the code for handling all requests made to the blog object. The folling code will go into this file:
+
+
+
+## JWT authentication
 
 ## Extra features
 
