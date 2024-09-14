@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "express": "^4.19.2",
-    "mongo": "^0.1.0"
-  }
-}
