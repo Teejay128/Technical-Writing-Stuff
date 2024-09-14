@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Combinators</title>
+    <style>
+        nav a{ 
+            text-decoration: none;
+            border: 2px solid green;
+            background-color: #134335;
+            color: white;
+            margin: 10px;
+            padding: 10px;
+        }
+
+        ul > li{
+            font-weight: bold;
+            color: blue;
+            border: 2px solid blue;
+            margin-top: 20px;
+            list-style-type: lower-roman;
+        }
+
+        h2 + p{
+            background-color: #f12;
+            color: white;
+            font-size: large;
+            padding: 10px;
+        }
+
+        .limit ~ li{
+            color: #f12a;
+            text-decoration: line-through;
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <a href="www.w3schools.com">Sample link 1</a>
+        <h2><a href="www.freecodecamp.com">Sample link 2</a></h2>
+        <a href="www.github.com/Teejay128">Sample link 3</a>
+    </nav>
+
+    
+    <ul>
+        <li>List item 1</li>
+        <li>List item 2</li>
+        <li>List item 3</li>
+        <li>List item 4</li>
+        <li>List item 5</li>
+        <ol>
+            <li>Nested item 1</li>
+            <li>Nested item 2</li>
+        </ol>
+        <li>List item 6</li>
+        <li>List item 7</li>
+    </ul>
+
+
+    <h2>Header</h2>
+    <p>Paragraph after a header</p>
+
+    <h2>Another header</h2>
+    <div>
+        <h2>Header inside a div</h2>
+        <p>Paragraph after a anchor tag</p>
+        <a href="www.dev.to">This link is not styled because it is not inside the nav bar</a>
+    </div>
+    <p>Paragraph after a div</p>
+
+
+    <ol>
+        <li>List item 1</li>
+        <li>List item 2</li>
+        <li class="limit">List item 3</li>
+        <li>List item 4</li>
+        <li>List item 5</li>
+        <li>List item 6</li>
+        <li>List item 7</li>
+    </ol>
+</body>
+</html>
